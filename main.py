@@ -17,8 +17,8 @@ last_input_time = pygame.time.get_ticks()
 # To get mouse position
 pyautogui.moveTo(100, 200)
 
-DEADZONE = 0.25
-SENSITIVITY = 2
+JOYSTICK_DEADZONE = 0.25
+JOYSTICK_SENSITIVITY = 2
 
 
 # Button Identities
@@ -63,33 +63,27 @@ def MAP_BUTTON_TO_NAME(button):
 while True:
     for event in pygame.event.get():
         cursorPosition = pyautogui.position()
+        # Handle joystick axis motion
         if event.type == pygame.JOYAXISMOTION:
-            # Horizontal
-            # Get the input state
+            # Get horizontal and vertical axis states
             joystick_x_axis = controller.get_axis(0)
-
-            # Apply dead zones
-            if abs(joystick_x_axis) < DEADZONE:
-                input_state = 0.0
-
-            # Apply sensitivity settings
-            joystick_x_axis *= SENSITIVITY
-
-            # Vertical
-            # Get the input state
             joystick_y_axis = controller.get_axis(1)
 
-            # Apply dead zones
-            if abs(joystick_y_axis) < DEADZONE:
+            # Apply dead-zones
+            if abs(joystick_x_axis) < JOYSTICK_DEADZONE:
+                joystick_x_axis = 0.0
+            if abs(joystick_y_axis) < JOYSTICK_DEADZONE:
                 joystick_y_axis = 0.0
 
             # Apply sensitivity settings
-            joystick_y_axis *= SENSITIVITY
+            joystick_x_axis *= JOYSTICK_SENSITIVITY
+            joystick_y_axis *= JOYSTICK_SENSITIVITY
 
-            # Test and Setup
+            # Determine which axis to use
             if abs(joystick_x_axis) > abs(joystick_y_axis):
                 if abs(joystick_x_axis) >= 0.2:
                     print("Horizontal", joystick_x_axis)
+
             elif abs(joystick_x_axis) < abs(joystick_y_axis):
                 if abs(joystick_y_axis) >= 0.2:
                     joystick_y_axis *= -1
