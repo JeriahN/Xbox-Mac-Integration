@@ -1,7 +1,8 @@
 import pyautogui
 import pygame
 
-# Controller Setup
+
+# Controller Setup & Detection
 try:
     pygame.init()
     pygame.joystick.init()
@@ -10,89 +11,80 @@ try:
 except pygame.error as e:
     print("Controller not found:")
     exit(1)
-    # raise an exception or exit the program if the controller is not available
 
 last_input_time = pygame.time.get_ticks()
 
 # To get mouse position
 pyautogui.moveTo(100, 200)
 
+# Joystick Variables
 JOYSTICK_DEADZONE = 0.25
-JOYSTICK_SENSITIVITY = 2
+JOYSTICK_SENSITIVITY = 10
+
+# Controller Button Map
+BUTTON_MAP = {
+    0: "A",
+    1: "B",
+    2: "X",
+    3: "Y",
+    4: "Select",
+    5: "Home",
+    6: "Menu",
+    7: "LS",
+    8: "RS",
+    9: "LB",
+    10: "RB",
+    11: "Up_Arrow",
+    12: "Down_Arrow",
+    13: "Left_Arrow",
+    14: "Right_Arrow",
+    15: "Exit"
+}
 
 
-# Button Identities
 def MAP_BUTTON_TO_NAME(button):
-    if button == 0:
-        return "A"
-    elif button == 1:
-        return "B"
-    elif button == 2:
-        return "X"
-    elif button == 3:
-        return "Y"
-    elif button == 4:
-        return "Select"
-    elif button == 5:
-        return "Home"
-    elif button == 6:
-        return "Menu"
-    elif button == 7:
-        return "LS"
-    elif button == 8:
-        return "RS"
-    elif button == 9:
-        return "LB"
-    elif button == 10:
-        return "RB"
-    elif button == 11:
-        return "Up_Arrow"
-    elif button == 12:
-        return "Down_Arrow"
-    elif button == 13:
-        return "Left_Arrow"
-    elif button == 14:
-        return "Right_Arrow"
-    elif button == 15:
-        exit(0)
-    else:
-        return button
+    return BUTTON_MAP.get(button, button)
+
+
+# Handle Cursor Axis and Value
+def detect_joystick_axis():
+    # Get horizontal and vertical axis states
+    joystick_x_axis = controller.get_axis(0)
+    joystick_y_axis = controller.get_axis(1)
+
+    # Apply dead-zones
+    if abs(joystick_x_axis) < JOYSTICK_DEADZONE:
+        joystick_x_axis = 0.0
+    if abs(joystick_y_axis) < JOYSTICK_DEADZONE:
+        joystick_y_axis = 0.0
+
+    # Apply sensitivity settings
+    joystick_x_axis *= JOYSTICK_SENSITIVITY
+    joystick_y_axis *= JOYSTICK_SENSITIVITY
+
+    # Determine which axis to use
+    if abs(joystick_x_axis) > abs(joystick_y_axis):
+        if abs(joystick_x_axis) >= 0.2:
+            print("Horizontal", joystick_x_axis)
+
+    elif abs(joystick_x_axis) < abs(joystick_y_axis):
+        if abs(joystick_y_axis) >= 0.2:
+            print("Vertical", joystick_y_axis)
 
 
 # Get Controller Input
 while True:
     for event in pygame.event.get():
-        cursorPosition = pyautogui.position()
         # Handle joystick axis motion
         if event.type == pygame.JOYAXISMOTION:
-            # Get horizontal and vertical axis states
-            joystick_x_axis = controller.get_axis(0)
-            joystick_y_axis = controller.get_axis(1)
+            detect_joystick_axis()
 
-            # Apply dead-zones
-            if abs(joystick_x_axis) < JOYSTICK_DEADZONE:
-                joystick_x_axis = 0.0
-            if abs(joystick_y_axis) < JOYSTICK_DEADZONE:
-                joystick_y_axis = 0.0
-
-            # Apply sensitivity settings
-            joystick_x_axis *= JOYSTICK_SENSITIVITY
-            joystick_y_axis *= JOYSTICK_SENSITIVITY
-
-            # Determine which axis to use
-            if abs(joystick_x_axis) > abs(joystick_y_axis):
-                if abs(joystick_x_axis) >= 0.2:
-                    print("Horizontal", joystick_x_axis)
-
-            elif abs(joystick_x_axis) < abs(joystick_y_axis):
-                if abs(joystick_y_axis) >= 0.2:
-                    joystick_y_axis *= -1
-                    print("Vertical", joystick_y_axis)
-
+        # Handle Button Press
         elif event.type == pygame.JOYBUTTONDOWN:
             button_down = MAP_BUTTON_TO_NAME(event.button)
             print(button_down, "was pressed down")
 
+        # Handle Button Release
         elif event.type == pygame.JOYBUTTONUP:
             button_up = MAP_BUTTON_TO_NAME(event.button)
             print(button_up, "was lifted up")
