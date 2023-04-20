@@ -1,6 +1,6 @@
+import threading
 import pyautogui
 import pygame
-
 
 # Controller Setup & Detection
 try:
@@ -72,19 +72,28 @@ def detect_joystick_axis():
             print("Vertical", joystick_y_axis)
 
 
-# Get Controller Input
-while True:
-    for event in pygame.event.get():
-        # Handle joystick axis motion
-        if event.type == pygame.JOYAXISMOTION:
-            detect_joystick_axis()
+def get_controller_input():
+    while True:
+        for event in pygame.event.get():
+            # Handle joystick axis motion
+            if event.type == pygame.JOYAXISMOTION:
+                detect_joystick_axis()
 
-        # Handle Button Press
-        elif event.type == pygame.JOYBUTTONDOWN:
-            button_down = MAP_BUTTON_TO_NAME(event.button)
-            print(button_down, "was pressed down")
+            # Handle Button Press
+            elif event.type == pygame.JOYBUTTONDOWN:
+                button_down = MAP_BUTTON_TO_NAME(event.button)
+                print(button_down, "was pressed down")
 
-        # Handle Button Release
-        elif event.type == pygame.JOYBUTTONUP:
-            button_up = MAP_BUTTON_TO_NAME(event.button)
-            print(button_up, "was lifted up")
+            # Handle Button Release
+            elif event.type == pygame.JOYBUTTONUP:
+                button_up = MAP_BUTTON_TO_NAME(event.button)
+                print(button_up, "was lifted up")
+
+
+def run_in_background():
+    t = threading.Thread(target=get_controller_input)
+    t.start()
+
+
+if __name__ == '__main__':
+    run_in_background()
