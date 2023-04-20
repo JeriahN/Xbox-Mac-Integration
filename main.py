@@ -1,25 +1,33 @@
-import threading
-import pyautogui
-import pygame
+import pyautogui  # Manage Cursor
+import pygame  # Manage Controller
+from multiprocessing import Process  # Run in background
+import logging  # Log outputs
 
-# Controller Setup & Detection
+# Set up logging configuration
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("xbxmacintegration.log"),
+        logging.StreamHandler()
+    ]
+)
+
+# Controller Setup & Detection | If Joystick is successfully found the app will launch, if else app will quit
 try:
     pygame.init()
     pygame.joystick.init()
     controller = pygame.joystick.Joystick(0)
     controller.init()
 except pygame.error as e:
+    logging.critical("Controller could not be found.")
     print("Controller not found:")
     exit(1)
 
-last_input_time = pygame.time.get_ticks()
-
-# To get mouse position
-pyautogui.moveTo(100, 200)
-
-# Joystick Variables
-JOYSTICK_DEADZONE = 0.25
-JOYSTICK_SENSITIVITY = 10
+# Joystick Variables | Set Dead-Zone (Space to travel until detected) and Sensitivity of Controller (How much to
+# multiply the value of the detection)
+JOYSTICK_DEADZONE = 0.25  # Default 0.25
+JOYSTICK_SENSITIVITY = 10  # Default 10
 
 # Controller Button Map
 BUTTON_MAP = {
@@ -40,6 +48,9 @@ BUTTON_MAP = {
     14: "Right_Arrow",
     15: "Exit"
 }
+
+
+logging.info("Button Map Loaded!", BUTTON_MAP)
 
 
 def MAP_BUTTON_TO_NAME(button):
@@ -63,16 +74,26 @@ def detect_joystick_axis():
     joystick_y_axis *= JOYSTICK_SENSITIVITY
 
     # Determine which axis to use
-    if abs(joystick_x_axis) > abs(joystick_y_axis):
+    if abs(joystick_x_axis) > abs(joystick_y_axis):  # Horizontal Axis
         if abs(joystick_x_axis) >= 0.2:
             print("Horizontal", joystick_x_axis)
 
-    elif abs(joystick_x_axis) < abs(joystick_y_axis):
+    elif abs(joystick_x_axis) < abs(joystick_y_axis):  # Vertical Axis
         if abs(joystick_y_axis) >= 0.2:
             print("Vertical", joystick_y_axis)
 
 
-def get_controller_input():
+def log_settings():
+    print("=====SETTINGS=====")
+    print("Sensitivity", JOYSTICK_SENSITIVITY)
+    print("Dead-Zone", JOYSTICK_DEADZONE)
+    print("=====Button=Mapping=====")
+    print(BUTTON_MAP)
+
+
+# Define a function to run the controller input loop in a background process
+def run_controller_input():
+    # Get Controller Input
     while True:
         for event in pygame.event.get():
             # Handle joystick axis motion
@@ -82,18 +103,22 @@ def get_controller_input():
             # Handle Button Press
             elif event.type == pygame.JOYBUTTONDOWN:
                 button_down = MAP_BUTTON_TO_NAME(event.button)
-                print(button_down, "was pressed down")
+                if button_down == "Exit":
+                    exit(0)
+                elif button_down == "Select":
+                    log_settings()
+                else:
+                    print("\"", button_down, "\"was pressed down")
 
             # Handle Button Release
             elif event.type == pygame.JOYBUTTONUP:
                 button_up = MAP_BUTTON_TO_NAME(event.button)
-                print(button_up, "was lifted up")
+                print("\"", button_up, "\"was lifted up")
 
 
-def run_in_background():
-    t = threading.Thread(target=get_controller_input)
-    t.start()
-
-
+# Start the controller input loop in a background process
 if __name__ == '__main__':
-    run_in_background()
+    p = Process(target=run_controller_input)
+    p.start()
+    logging.info("Successfully started!")
+    print("=====Press Select to get details, press Share to exit=====")
