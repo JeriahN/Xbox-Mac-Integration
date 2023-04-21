@@ -1,10 +1,12 @@
-import pyautogui  # Manage Cursor
+from pynput.mouse import Controller
 import pygame  # Manage Controller
 from multiprocessing import Process  # Run in background
 import logging  # Log outputs
 import logging.handlers  # Optimize Logs
 import json  # Handle External Button Map Config
 import os.path  # Handle creation of the button map
+
+mouse = Controller()
 
 # Set up rotating file handler to keep maximum 10 backup files of 1MB each
 rotating_handler = logging.handlers.RotatingFileHandler(
@@ -65,8 +67,8 @@ except pygame.error as e:
 
 # Joystick Variables | Set Dead-Zone (Space to travel until detected) and Sensitivity of Controller (How much to
 # multiply the value of the detection)
-JOYSTICK_DEADZONE = 0.25  # Default 0.25
-JOYSTICK_SENSITIVITY = 10  # Default 10
+JOYSTICK_DEADZONE = 0  # Default 0
+JOYSTICK_SENSITIVITY = 3  # Default 3
 
 
 def MAP_BUTTON_TO_NAME(button):
@@ -92,11 +94,13 @@ def detect_joystick_axis():
     # Determine which axis to use
     if abs(joystick_x_axis) > abs(joystick_y_axis):  # Horizontal Axis
         if abs(joystick_x_axis) >= 0.2:
-            return
+            joystick_horizontal = int(joystick_x_axis * JOYSTICK_SENSITIVITY)
+            mouse.move(joystick_horizontal, 0)
 
     elif abs(joystick_x_axis) < abs(joystick_y_axis):  # Vertical Axis
         if abs(joystick_y_axis) >= 0.2:
-            return
+            joystick_vertical = int(joystick_y_axis * JOYSTICK_SENSITIVITY)
+            mouse.move(0, joystick_vertical)
 
 
 def log_settings():
