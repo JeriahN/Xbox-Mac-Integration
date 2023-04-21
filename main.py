@@ -1,4 +1,4 @@
-from pynput.mouse import Controller
+from pynput.mouse import Button, Controller  # Handle Movement of Cursor
 import pygame  # Manage Controller
 from multiprocessing import Process  # Run in background
 import logging  # Log outputs
@@ -6,6 +6,7 @@ import logging.handlers  # Optimize Logs
 import json  # Handle External Button Map Config
 import os.path  # Handle creation of the button map
 
+# Set Mouse Controller
 mouse = Controller()
 
 # Set up rotating file handler to keep maximum 10 backup files of 1MB each
@@ -127,12 +128,20 @@ def run_controller_input():
                     exit(0)
                 elif button_down == "Select":
                     log_settings()
+                elif button_down == "A":
+                    mouse.press(Button.left)
+                elif button_down == "Menu":
+                    mouse.press(Button.right)
                 else:
                     print("\"", button_down, "\"was pressed down")
 
             # Handle Button Release
             elif event.type == pygame.JOYBUTTONUP:
                 button_up = MAP_BUTTON_TO_NAME(event.button)
+                if button_up == "A":
+                    mouse.release(Button.left)
+                elif button_up == "Menu":
+                    mouse.release(Button.right)
                 print("\"", button_up, "\"was lifted up")
 
 
