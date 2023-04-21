@@ -2,35 +2,29 @@ import pyautogui  # Manage Cursor
 import pygame  # Manage Controller
 from multiprocessing import Process  # Run in background
 import logging  # Log outputs
+import logging.handlers  # Optimize Logs
+import json  # Handle External Button Map Config
+import os.path  # Handle creation of the button map
+
+# Set up rotating file handler to keep maximum 10 backup files of 1MB each
+rotating_handler = logging.handlers.RotatingFileHandler(
+    filename="xbxmacintegration.log",
+    maxBytes=1000000,
+    backupCount=1
+)
 
 # Set up logging configuration
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler("xbxmacintegration.log"),
+        rotating_handler,
         logging.StreamHandler()
     ]
 )
 
-# Controller Setup & Detection | If Joystick is successfully found the app will launch, if else app will quit
-try:
-    pygame.init()
-    pygame.joystick.init()
-    controller = pygame.joystick.Joystick(0)
-    controller.init()
-except pygame.error as e:
-    logging.critical("Controller could not be found.")
-    print("Controller not found:")
-    exit(1)
-
-# Joystick Variables | Set Dead-Zone (Space to travel until detected) and Sensitivity of Controller (How much to
-# multiply the value of the detection)
-JOYSTICK_DEADZONE = 0.25  # Default 0.25
-JOYSTICK_SENSITIVITY = 10  # Default 10
-
 # Controller Button Map
-BUTTON_MAP = {
+DEFAULT_BUTTON_MAP = {
     0: "A",
     1: "B",
     2: "X",
@@ -49,12 +43,34 @@ BUTTON_MAP = {
     15: "Exit"
 }
 
+# Read button map from JSON file
+if os.path.isfile("button_map.json"):
+    with open("button_map.json", "r") as f:
+        BUTTON_MAP = {str(k): v for k, v in json.load(f).items()}
+else:
+    with open("button_map.json", "w") as f:
+        json.dump(DEFAULT_BUTTON_MAP, f)
+    BUTTON_MAP = DEFAULT_BUTTON_MAP
 
-logging.info("Button Map Loaded!", BUTTON_MAP)
+
+# Controller Setup & Detection | If Joystick is successfully found the app will launch, if else app will quit
+try:
+    pygame.init()
+    pygame.joystick.init()
+    controller = pygame.joystick.Joystick(0)
+    controller.init()
+except pygame.error as e:
+    logging.critical("Controller could not be found.")
+    exit(1)
+
+# Joystick Variables | Set Dead-Zone (Space to travel until detected) and Sensitivity of Controller (How much to
+# multiply the value of the detection)
+JOYSTICK_DEADZONE = 0.25  # Default 0.25
+JOYSTICK_SENSITIVITY = 10  # Default 10
 
 
 def MAP_BUTTON_TO_NAME(button):
-    return BUTTON_MAP.get(button, button)
+    return BUTTON_MAP.get(str(button), button)
 
 
 # Handle Cursor Axis and Value
@@ -76,19 +92,19 @@ def detect_joystick_axis():
     # Determine which axis to use
     if abs(joystick_x_axis) > abs(joystick_y_axis):  # Horizontal Axis
         if abs(joystick_x_axis) >= 0.2:
-            print("Horizontal", joystick_x_axis)
+            return
 
     elif abs(joystick_x_axis) < abs(joystick_y_axis):  # Vertical Axis
         if abs(joystick_y_axis) >= 0.2:
-            print("Vertical", joystick_y_axis)
+            return
 
 
 def log_settings():
-    print("=====SETTINGS=====")
-    print("Sensitivity", JOYSTICK_SENSITIVITY)
-    print("Dead-Zone", JOYSTICK_DEADZONE)
-    print("=====Button=Mapping=====")
-    print(BUTTON_MAP)
+    logging.info("=====SETTINGS=====")
+    logging.info("Sensitivity", JOYSTICK_SENSITIVITY)
+    logging.info("Dead-Zone", JOYSTICK_DEADZONE)
+    logging.info("=====Button=Mapping=====")
+    logging.info(BUTTON_MAP)
 
 
 # Define a function to run the controller input loop in a background process
@@ -121,4 +137,4 @@ if __name__ == '__main__':
     p = Process(target=run_controller_input)
     p.start()
     logging.info("Successfully started!")
-    print("=====Press Select to get details, press Share to exit=====")
+    logging.info("=====Press Select to get details, press Share to exit=====")
