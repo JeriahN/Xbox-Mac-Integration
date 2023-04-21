@@ -1,4 +1,5 @@
 *.log
 *.spec
+.DS_Store
 build/*
 dist/*
