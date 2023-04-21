@@ -104,14 +104,6 @@ def detect_joystick_axis():
             mouse.move(0, joystick_vertical)
 
 
-def log_settings():
-    logging.info("=====SETTINGS=====")
-    logging.info("Sensitivity", JOYSTICK_SENSITIVITY)
-    logging.info("Dead-Zone", JOYSTICK_DEADZONE)
-    logging.info("=====Button=Mapping=====")
-    logging.info(BUTTON_MAP)
-
-
 # Define a function to run the controller input loop in a background process
 def run_controller_input():
     # Get Controller Input
@@ -126,14 +118,12 @@ def run_controller_input():
                 button_down = MAP_BUTTON_TO_NAME(event.button)
                 if button_down == "Exit":
                     exit(0)
-                elif button_down == "Select":
-                    log_settings()
                 elif button_down == "A":
                     mouse.press(Button.left)
                 elif button_down == "Menu":
                     mouse.press(Button.right)
                 else:
-                    print("\"", button_down, "\"was pressed down")
+                    return
 
             # Handle Button Release
             elif event.type == pygame.JOYBUTTONUP:
@@ -142,12 +132,9 @@ def run_controller_input():
                     mouse.release(Button.left)
                 elif button_up == "Menu":
                     mouse.release(Button.right)
-                print("\"", button_up, "\"was lifted up")
 
 
 # Start the controller input loop in a background process
 if __name__ == '__main__':
     p = Process(target=run_controller_input)
     p.start()
-    logging.info("Successfully started!")
-    logging.info("=====Press Select to get details, press Share to exit=====")
