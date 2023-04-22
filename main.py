@@ -45,14 +45,18 @@ DEFAULT_BUTTON_MAP = {
     15: "Exit"
 }
 
-# Read button map from JSON file
-if os.path.isfile("button_map.json"):
-    with open("button_map.json", "r") as f:
-        BUTTON_MAP = {str(k): v for k, v in json.load(f).items()}
-else:
-    with open("button_map.json", "w") as f:
-        json.dump(DEFAULT_BUTTON_MAP, f)
-    BUTTON_MAP = DEFAULT_BUTTON_MAP
+try:
+    # Read button map from JSON file
+    if os.path.isfile("button_map.json"):
+        with open("button_map.json", "r") as f:
+            BUTTON_MAP = {str(k): v for k, v in json.load(f).items()}
+    else:
+        with open("button_map.json", "w") as f:
+            json.dump(DEFAULT_BUTTON_MAP, f)
+        BUTTON_MAP = DEFAULT_BUTTON_MAP
+
+except pygame.error:
+    logging.critical("Could not find Button Map and failed to create one")
 
 
 # Controller Setup & Detection | If Joystick is successfully found the app will launch, if else app will quit
@@ -67,99 +71,51 @@ except pygame.error as e:
 
 # Joystick Variables | Set Dead-Zone (Space to travel until detected) and Sensitivity of Controller (How much to
 # multiply the value of the detection)
-JOYSTICK_DEADZONE = 0.2  # Default 0
-JOYSTICK_SENSITIVITY = 3  # Default 3
+JOYSTICK_DEADZONE = 0  # Default 0
+JOYSTICK_SENSITIVITY = 4  # Default 4
 
 
+# Map Buttons
 def MAP_BUTTON_TO_NAME(button):
     return BUTTON_MAP.get(str(button), button)
 
 
-# Handle Cursor Axis and Value
-def detect_joystick_axis():
-    # Get horizontal and vertical axis states
-    joystick_x_axis = controller.get_axis(0)
-    joystick_y_axis = controller.get_axis(1)
-
-    # Apply dead-zones
-    if abs(joystick_x_axis) < JOYSTICK_DEADZONE:
-        joystick_x_axis = 0.0
-    if abs(joystick_y_axis) < JOYSTICK_DEADZONE:
-        joystick_y_axis = 0.0
-
-    # Apply sensitivity settings
-    joystick_x_axis *= JOYSTICK_SENSITIVITY
-    joystick_y_axis *= JOYSTICK_SENSITIVITY
-
-    # Determine which axis to use
-    if abs(joystick_x_axis) > abs(joystick_y_axis):  # Horizontal Axis
-        if abs(joystick_x_axis) >= 0.2:
-            joystick_horizontal = int(joystick_x_axis * JOYSTICK_SENSITIVITY)
-            mouse.move(joystick_horizontal, 0)
-
-    elif abs(joystick_x_axis) < abs(joystick_y_axis):  # Vertical Axis
-        if abs(joystick_y_axis) >= 0.2:
-            joystick_vertical = int(joystick_y_axis * JOYSTICK_SENSITIVITY)
-            mouse.move(0, joystick_vertical)
-
-
-# Define a function to run the controller input loop in a background process
-
-
-def handle_joystick_axis(event):
-    joystick_x_axis = controller.get_axis(0)
-    joystick_y_axis = controller.get_axis(1)
-
-    # Apply dead-zones
-    if abs(joystick_x_axis) < JOYSTICK_DEADZONE:
-        joystick_x_axis = 0.0
-    if abs(joystick_y_axis) < JOYSTICK_DEADZONE:
-        joystick_y_axis = 0.0
-
-    # Apply sensitivity settings
-    joystick_x_axis *= JOYSTICK_SENSITIVITY
-    joystick_y_axis *= JOYSTICK_SENSITIVITY
-
-    # Determine which axis to use
-    if abs(joystick_x_axis) > abs(joystick_y_axis):  # Horizontal Axis
-        if abs(joystick_x_axis) >= 0.2:
-            joystick_horizontal = int(joystick_x_axis * JOYSTICK_SENSITIVITY)
-            mouse.move(joystick_horizontal, 0)
-
-    elif abs(joystick_x_axis) < abs(joystick_y_axis):  # Vertical Axis
-        if abs(joystick_y_axis) >= 0.2:
-            joystick_vertical = int(joystick_y_axis * JOYSTICK_SENSITIVITY)
-            mouse.move(0, joystick_vertical)
-
-
-def handle_button_press(event):
-    button_down = MAP_BUTTON_TO_NAME(event.button)
-    if button_down == "Exit":
-        exit(0)
-    elif button_down == "A":
-        mouse.press(Button.left)
-    elif button_down == "Menu":
-        mouse.press(Button.right)
-
-
-def handle_button_release(event):
-    button_up = MAP_BUTTON_TO_NAME(event.button)
-    if button_up == "A":
-        mouse.release(Button.left)
-    elif button_up == "Menu":
-        mouse.release(Button.right)
-
-
+# Get Controller Input
 def run_controller_input():
     # Get Controller Input
     while True:
         for event in pygame.event.get():
             if event.type == pygame.JOYAXISMOTION:
-                handle_joystick_axis(event)
+                joystick_x_axis = controller.get_axis(0)
+                joystick_y_axis = controller.get_axis(1)
+
+                # Apply dead-zones
+                if abs(joystick_x_axis) < JOYSTICK_DEADZONE:
+                    joystick_x_axis = 0.0
+                if abs(joystick_y_axis) < JOYSTICK_DEADZONE:
+                    joystick_y_axis = 0.0
+
+                # Apply sensitivity settings
+                joystick_x_axis *= JOYSTICK_SENSITIVITY
+                joystick_y_axis *= JOYSTICK_SENSITIVITY
+
+                mouse.move(int(joystick_x_axis), int(joystick_y_axis))
+
             elif event.type == pygame.JOYBUTTONDOWN:
-                handle_button_press(event)
+                button_down = MAP_BUTTON_TO_NAME(event.button)
+                if button_down == "Exit":
+                    exit(0)
+                elif button_down == "A":
+                    mouse.press(Button.left)
+                elif button_down == "Menu":
+                    mouse.press(Button.right)
+
             elif event.type == pygame.JOYBUTTONUP:
-                handle_button_release(event)
+                button_up = MAP_BUTTON_TO_NAME(event.button)
+                if button_up == "A":
+                    mouse.release(Button.left)
+                elif button_up == "Menu":
+                    mouse.release(Button.right)
 
 
 # Start the controller input loop in a background process
