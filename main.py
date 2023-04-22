@@ -55,8 +55,9 @@ try:
             json.dump(DEFAULT_BUTTON_MAP, f)
         BUTTON_MAP = DEFAULT_BUTTON_MAP
 
-except pygame.error:
-    logging.critical("Could not find Button Map and failed to create one")
+except logging.error as e:
+    logging.error("Could not find Button Map and failed to create one, loading default")
+    BUTTON_MAP = DEFAULT_BUTTON_MAP
 
 
 # Controller Setup & Detection | If Joystick is successfully found the app will launch, if else app will quit
