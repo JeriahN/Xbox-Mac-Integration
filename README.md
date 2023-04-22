@@ -1,8 +1,6 @@
-# Xbox Mac Integration
+<h2>Xbox Mac Integration</h2>
  A small python script that improves upon the Xbox controller Integration in MacOS.
-<hr>
 <h2>How to use</h2>
-<hr>
 <ul>
 <li>Download Source or download latest from releases</li>
 <li>NOTE: If you download from source make sure to install pyinput</li>
