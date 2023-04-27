@@ -7,6 +7,7 @@ import os.path  # Handle creation of the button map
 
 # Set Mouse Controller
 mouse = Controller()
+button_map_filename = "button_map.json"
 
 # Set up rotating file handler to keep maximum 10 backup files of 1MB each
 rotating_handler = logging.handlers.RotatingFileHandler(
@@ -47,11 +48,11 @@ DEFAULT_BUTTON_MAP = {
 
 try:
     # Read button map from JSON file
-    if os.path.isfile("button_map.json"):
+    if os.path.isfile(button_map_filename):
         with open("button_map.json", "r") as f:
             BUTTON_MAP = {str(k): v for k, v in json.load(f).items()}
     else:
-        with open("button_map.json", "w") as f:
+        with open(button_map_filename, "w") as f:
             json.dump(DEFAULT_BUTTON_MAP, f)
         BUTTON_MAP = DEFAULT_BUTTON_MAP
 
