@@ -1,0 +1,16 @@
+name: Codecov
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  codecov:
+    name: Upload coverage to Codecov
+    runs-on: ubuntu-latest
+    steps:
+      - uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
