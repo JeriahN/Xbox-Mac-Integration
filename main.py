@@ -80,31 +80,52 @@ def handle_button_up(button_up, mouse):
         mouse.release(Button.right)
 
 
+def initialize_controller():
+    logger.info("Initializing pygame and joystick")
+    pygame.init()
+    pygame.joystick.init()
+    controller = pygame.joystick.Joystick(0)
+    controller.init()
+    return controller
+
+
 def run_controller_input(controller, mouse, button_map):
     logger.info("Starting controller input loop")
     while True:
         for event in pygame.event.get():
             if event.type == pygame.JOYAXISMOTION:
-                joystick_x_axis = controller.get_axis(0)
-                joystick_y_axis = controller.get_axis(1)
-
-                if abs(joystick_x_axis) < JOYSTICK_DEADZONE:
-                    joystick_x_axis = 0.0
-                if abs(joystick_y_axis) < JOYSTICK_DEADZONE:
-                    joystick_y_axis = 0.0
-
-                joystick_x_axis *= JOYSTICK_SENSITIVITY
-                joystick_y_axis *= JOYSTICK_SENSITIVITY
-
-                mouse.move(int(joystick_x_axis), int(joystick_y_axis))
+                handle_joystick_motion(controller, mouse)
 
             elif event.type == pygame.JOYBUTTONDOWN:
-                button_down = map_button_to_name(event.button, button_map)
-                handle_button_down(button_down, mouse)
+                handle_button_down_event(event, button_map, mouse)
 
             elif event.type == pygame.JOYBUTTONUP:
-                button_up = map_button_to_name(event.button, button_map)
-                handle_button_up(button_up, mouse)
+                handle_button_up_event(event, button_map, mouse)
+
+
+def handle_joystick_motion(controller, mouse):
+    joystick_x_axis = controller.get_axis(0)
+    joystick_y_axis = controller.get_axis(1)
+
+    if abs(joystick_x_axis) < JOYSTICK_DEADZONE:
+        joystick_x_axis = 0.0
+    if abs(joystick_y_axis) < JOYSTICK_DEADZONE:
+        joystick_y_axis = 0.0
+
+    joystick_x_axis *= JOYSTICK_SENSITIVITY
+    joystick_y_axis *= JOYSTICK_SENSITIVITY
+
+    mouse.move(int(joystick_x_axis), int(joystick_y_axis))
+
+
+def handle_button_down_event(event, button_map, mouse):
+    button_down = map_button_to_name(event.button, button_map)
+    handle_button_down(button_down, mouse)
+
+
+def handle_button_up_event(event, button_map, mouse):
+    button_up = map_button_to_name(event.button, button_map)
+    handle_button_up(button_up, mouse)
 
 
 def main():
@@ -115,12 +136,7 @@ def main():
     button_map = load_button_map(BUTTON_MAP_FILENAME)
 
     try:
-        # Controller setup & detection
-        logger.info("Initializing pygame and joystick")
-        pygame.init()
-        pygame.joystick.init()
-        controller = pygame.joystick.Joystick(0)
-        controller.init()
+        controller = initialize_controller()
 
         # Start the controller input loop
         run_controller_input(controller, mouse, button_map)
