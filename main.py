@@ -3,6 +3,7 @@ import pygame
 import logging.handlers
 import json
 import os.path
+import threading
 
 # Constants
 JOYSTICK_DEADZONE = 0
@@ -45,6 +46,8 @@ DEFAULT_BUTTON_MAP = {
     15: "Exit"
 }
 
+exit_flag = threading.Event()
+
 
 def load_button_map(filename):
     logger.info("Loading button map from file: %s", filename)
@@ -65,7 +68,7 @@ def map_button_to_name(button, button_map):
 def handle_button_down(button_down, mouse):
     logger.info("Button down: %s", button_down)
     if button_down == "Exit":
-        exit(0)
+        exit_flag.set()
     elif button_down == "A":
         mouse.press(Button.left)
     elif button_down == "Menu":
@@ -91,16 +94,19 @@ def initialize_controller():
 
 def run_controller_input(controller, mouse, button_map):
     logger.info("Starting controller input loop")
-    while True:
+    while not exit_flag.is_set():
+        pygame.event.pump()
         for event in pygame.event.get():
-            if event.type == pygame.JOYAXISMOTION:
-                handle_joystick_motion(controller, mouse)
-
-            elif event.type == pygame.JOYBUTTONDOWN:
-                handle_button_down_event(event, button_map, mouse)
+            if event.type == pygame.JOYBUTTONDOWN:
+                button_down = map_button_to_name(event.button, button_map)
+                handle_button_down(button_down, mouse)
 
             elif event.type == pygame.JOYBUTTONUP:
-                handle_button_up_event(event, button_map, mouse)
+                button_up = map_button_to_name(event.button, button_map)
+                handle_button_up(button_up, mouse)
+
+            elif event.type == pygame.JOYAXISMOTION:
+                handle_joystick_motion(controller, mouse)
 
 
 def handle_joystick_motion(controller, mouse):
@@ -118,16 +124,6 @@ def handle_joystick_motion(controller, mouse):
     mouse.move(int(joystick_x_axis), int(joystick_y_axis))
 
 
-def handle_button_down_event(event, button_map, mouse):
-    button_down = map_button_to_name(event.button, button_map)
-    handle_button_down(button_down, mouse)
-
-
-def handle_button_up_event(event, button_map, mouse):
-    button_up = map_button_to_name(event.button, button_map)
-    handle_button_up(button_up, mouse)
-
-
 def main():
     # Set up mouse controller
     mouse = Controller()
@@ -137,10 +133,7 @@ def main():
 
     try:
         controller = initialize_controller()
-
-        # Start the controller input loop
         run_controller_input(controller, mouse, button_map)
-
     except FileNotFoundError:
         logger.error("Button map file not found.")
     except pygame.error:
