@@ -1,32 +1,31 @@
-from pynput.mouse import Button, Controller  # Handle Movement of Cursor
-import pygame  # Manage Controller
-import logging  # Log outputs
-import logging.handlers  # Optimize Logs
-import json  # Handle External Button Map Config
-import os.path  # Handle creation of the button map
+from pynput.mouse import Button, Controller
+import pygame
+import logging.handlers
+import json
+import os.path
 
-# Set Mouse Controller
-mouse = Controller()
-button_map_filename = "button_map.json"
+# Constants
+JOYSTICK_DEADZONE = 0
+JOYSTICK_SENSITIVITY = 5
+BUTTON_MAP_FILENAME = "button_map.json"
+LOG_FILENAME = "xbxmacintegration.log"
 
 # Set up rotating file handler to keep maximum 10 backup files of 1MB each
 rotating_handler = logging.handlers.RotatingFileHandler(
-    filename="xbxmacintegration.log",
+    filename=LOG_FILENAME,
     maxBytes=1000000,
-    backupCount=1
+    backupCount=10
 )
 
 # Set up logging configuration
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        rotating_handler,
-        logging.StreamHandler()
-    ]
-)
+logger = logging.getLogger("xbxmacintegration")
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+rotating_handler.setFormatter(formatter)
+logger.addHandler(rotating_handler)
+logger.addHandler(logging.StreamHandler())
 
-# Controller Button Map
+# Default button map
 DEFAULT_BUTTON_MAP = {
     0: "A",
     1: "B",
@@ -46,79 +45,92 @@ DEFAULT_BUTTON_MAP = {
     15: "Exit"
 }
 
-try:
-    # Read button map from JSON file
-    if os.path.isfile(button_map_filename):
-        with open("button_map.json", "r") as f:
-            BUTTON_MAP = {str(k): v for k, v in json.load(f).items()}
+
+def load_button_map(filename):
+    logger.info("Loading button map from file: %s", filename)
+    if os.path.isfile(filename):
+        with open(filename, "r") as f:
+            return {str(k): v for k, v in json.load(f).items()}
     else:
-        with open(button_map_filename, "w") as f:
+        logger.warning("Button map file not found. Creating a new one with default values.")
+        with open(filename, "w") as f:
             json.dump(DEFAULT_BUTTON_MAP, f)
-        BUTTON_MAP = DEFAULT_BUTTON_MAP
-
-except logging.error as e:
-    logging.error("Could not find Button Map and failed to create one, loading default")
-    BUTTON_MAP = DEFAULT_BUTTON_MAP
+        return DEFAULT_BUTTON_MAP
 
 
-# Controller Setup & Detection | If Joystick is successfully found the app will launch, if else app will quit
-try:
-    pygame.init()
-    pygame.joystick.init()
-    controller = pygame.joystick.Joystick(0)
-    controller.init()
-except pygame.error as e:
-    logging.critical("Controller could not be found.")
-    exit(1)
-
-# Joystick Variables | Set Dead-Zone (Space to travel until detected) and Sensitivity of Controller (How much to
-# multiply the value of the detection)
-JOYSTICK_DEADZONE = 0  # Default 0
-JOYSTICK_SENSITIVITY = 4  # Default 4
+def map_button_to_name(button, button_map):
+    return button_map.get(str(button), button)
 
 
-# Map Buttons
-def MAP_BUTTON_TO_NAME(button):
-    return BUTTON_MAP.get(str(button), button)
+def handle_button_down(button_down, mouse):
+    logger.info("Button down: %s", button_down)
+    if button_down == "Exit":
+        exit(0)
+    elif button_down == "A":
+        mouse.press(Button.left)
+    elif button_down == "Menu":
+        mouse.press(Button.right)
 
 
-# Get Controller Input
-def run_controller_input():
-    # Get Controller Input
+def handle_button_up(button_up, mouse):
+    logger.info("Button up: %s", button_up)
+    if button_up == "A":
+        mouse.release(Button.left)
+    elif button_up == "Menu":
+        mouse.release(Button.right)
+
+
+def run_controller_input(controller, mouse, button_map):
+    logger.info("Starting controller input loop")
     while True:
         for event in pygame.event.get():
             if event.type == pygame.JOYAXISMOTION:
                 joystick_x_axis = controller.get_axis(0)
                 joystick_y_axis = controller.get_axis(1)
 
-                # Apply dead-zones
                 if abs(joystick_x_axis) < JOYSTICK_DEADZONE:
                     joystick_x_axis = 0.0
                 if abs(joystick_y_axis) < JOYSTICK_DEADZONE:
                     joystick_y_axis = 0.0
 
-                # Apply sensitivity settings
                 joystick_x_axis *= JOYSTICK_SENSITIVITY
                 joystick_y_axis *= JOYSTICK_SENSITIVITY
 
                 mouse.move(int(joystick_x_axis), int(joystick_y_axis))
 
             elif event.type == pygame.JOYBUTTONDOWN:
-                button_down = MAP_BUTTON_TO_NAME(event.button)
-                if button_down == "Exit":
-                    exit(0)
-                elif button_down == "A":
-                    mouse.press(Button.left)
-                elif button_down == "Menu":
-                    mouse.press(Button.right)
+                button_down = map_button_to_name(event.button, button_map)
+                handle_button_down(button_down, mouse)
 
             elif event.type == pygame.JOYBUTTONUP:
-                button_up = MAP_BUTTON_TO_NAME(event.button)
-                if button_up == "A":
-                    mouse.release(Button.left)
-                elif button_up == "Menu":
-                    mouse.release(Button.right)
+                button_up = map_button_to_name(event.button, button_map)
+                handle_button_up(button_up, mouse)
 
 
-# Start the controller input loop in a background process
-run_controller_input()
+def main():
+    # Set up mouse controller
+    mouse = Controller()
+
+    # Load button map
+    button_map = load_button_map(BUTTON_MAP_FILENAME)
+
+    try:
+        # Controller setup & detection
+        logger.info("Initializing pygame and joystick")
+        pygame.init()
+        pygame.joystick.init()
+        controller = pygame.joystick.Joystick(0)
+        controller.init()
+
+        # Start the controller input loop
+        run_controller_input(controller, mouse, button_map)
+
+    except FileNotFoundError:
+        logger.error("Button map file not found.")
+    except pygame.error:
+        logger.critical("Controller could not be found.")
+        exit(1)
+
+
+if __name__ == "__main__":
+    main()
