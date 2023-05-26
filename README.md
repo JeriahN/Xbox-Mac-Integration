@@ -16,7 +16,7 @@ This project provides integration between Xbox One and Xbox Series controllers w
 - Pygame library
 - pynput library
 
-## Build & Run [Or download a release]([https://github.com/user/repo/blob/branch/other_file.md](https://github.com/JeriahN/Xbox-Mac-Integration/releases))
+## Build & Run [Or download a release](https://github.com/JeriahN/Xbox-Mac-Integration/releases)
 1. Connect your Xbox controller to your Mac.
 2. Install the required Python libraries: Pygame and pynput.
 3. Download or clone this repository: `git clone https://github.com/JeriahN/Xbox-Mac-Integration.git`.
