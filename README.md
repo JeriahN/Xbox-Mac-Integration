@@ -11,10 +11,10 @@ This project provides integration between Xbox One and Xbox Series controllers w
 - Smoothing and sensitivity control: Apply smoothing algorithms and adjust sensitivity to fine-tune the controller's responsiveness.
 
 ## Requirements
-- Xbox One or Xbox Series controller
-- Python 3
-- Pygame library
-- pynput library
+- A controller supported with `PyGame`
+- `Python 3`
+- `Pygame library`
+- `pynput library`
 
 ## Build & Run [Or download a release](https://github.com/JeriahN/Xbox-Mac-Integration/releases)
 1. Connect your Xbox controller to your Mac.
