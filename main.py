@@ -7,46 +7,42 @@ import json  # JSON for more readable config file
 import os.path  # Filesystem for creating and managing config file
 import threading  # Multithreading for better optimization
 import time  # Time for delays used in smoothing
+from collections import defaultdict  # Imports some dictionaries or something
+import psutil  # Import process
 
 # Global Variables
-# Joystick
-joystick_x_velocity = 0.0  # Rate at how much faster the horizontal axis gets
-joystick_y_velocity = 0.0  # Rate at how much faster the vertical axis gets
-smoothing_factor = 0.2  # Adjust this value for smoother or more responsive input
-JOYSTICK_DEADZONE = 0  # At what point to start detecting the cursor movement to avoid drift (0 by default)
-JOYSTICK_SENSITIVITY = 5  # How much to make movements affect the input (5 by default)
+smoothing_factor = 0.2  # Choose smoothness of scrolling and cursor movement
+JOYSTICK_DEADZONE = 0  # Change deadzone of controller
+JOYSTICK_SENSITIVITY = 20  # Change speed of controller based on movement of joystick
+left_joystick_speed = 1  # Initial left joystick speed multiplied
+right_joystick_speed = 1  # Initial right joystick speed multiplied
 
 # Buttons
-DEBOUNCE_DELAY = 0.03  # Debounce delay
+DEBOUNCE_DELAY = 0.03  # Change delay between button presses to avoid pressing twice
 
 # Speed
-SLEEP_TIME = 0.005
+SLEEP_TIME = 0.01  # Time between each time code is run (can affect smoothness dramatically if pushed too high)
 
 # Files
-BUTTON_MAP_FILENAME = "button_map.json"  # Name of the button map file ("button_map.json" by default)
-LOG_FILENAME = "xbxmacintegration.log"  # Name of the main logfile ("xbxmacintegration.log" by default)
+BUTTON_MAP_FILENAME = "button_map.json"  # Name of the button map
+LOG_FILENAME = "xbxmacintegration.log"  # Name of the main log, others LOG_FILENAME(1, 2, 3)
 
 keyboard = KeyboardController()
-
-
-# Set up  an unreasonably optimized for controller input rotating file handler to keep maximum 10 backup files of 1MB
-# each
-rotating_handler = logging.handlers.RotatingFileHandler(
-    filename=LOG_FILENAME,
-    maxBytes=1000000,  # How many bytes for the main logfile to move onto the next (1000000 by default)
-    backupCount=10  # How many backups of the log to keep (10 by default)
-)
 
 # Set up logging configuration
 logger = logging.getLogger("xbxmacintegration")
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+rotating_handler = logging.handlers.RotatingFileHandler(
+    filename=LOG_FILENAME,
+    maxBytes=1000000,
+    backupCount=10
+)
 rotating_handler.setFormatter(formatter)
 logger.addHandler(rotating_handler)
 logger.addHandler(logging.StreamHandler())
 
-# Default button mapping (Used to create config file, recommended not edit this version instead the automatically
-# created one)
+# Default button mapping
 DEFAULT_BUTTON_MAP = {
     0: "A",
     1: "B",
@@ -66,20 +62,18 @@ DEFAULT_BUTTON_MAP = {
     15: "Exit"
 }
 
-
 # Global dictionary to track button states and debounce timestamps
-button_states = {}
-
+button_states = defaultdict(int)
 
 exit_flag = threading.Event()
 
 
-# Load button map or if it does not exist, create it
+# Load button map or create a new one
 def load_button_map(filename):
     logger.info("Loading button map from file: %s", filename)
     if os.path.isfile(filename):
         with open(filename, "r") as f:
-            return {str(k): v for k, v in json.load(f).items()}
+            return defaultdict(str, json.load(f))
     else:
         logger.warning("Button map file not found. Creating a new one with default values.")
         with open(filename, "w") as f:
@@ -92,7 +86,6 @@ def map_button_to_name(button, button_map):
     return button_map.get(str(button), button)
 
 
-# Do action when button is pressed
 def handle_button_down(button_down, mouse):
     logger.info("Button down: %s", button_down)
     if button_down == "Exit":
@@ -100,36 +93,23 @@ def handle_button_down(button_down, mouse):
     elif button_down == "A":
         if button_states.get("A", 0) + DEBOUNCE_DELAY <= time.monotonic():
             button_states["A"] = time.monotonic()
-            mouse.press(Button.left)
+            mouse.press(Button.left)  # Simulate left mouse button press
     elif button_down == "Menu":
         if button_states.get("Menu", 0) + DEBOUNCE_DELAY <= time.monotonic():
             button_states["Menu"] = time.monotonic()
-            mouse.press(Button.right)
-    elif button_down == "B":  # Added "B" button action
-        if button_states.get("B", 0) + DEBOUNCE_DELAY <= time.monotonic():
-            button_states["B"] = time.monotonic()
-            keyboard.press(Key.esc)  # Simulate pressing the "Esc" key
-    else:
-        return
+            mouse.press(Button.right)  # Simulate right mouse button press
 
 
-# Do action when button is released
 def handle_button_up(button_up, mouse):
     logger.info("Button up: %s", button_up)
     if button_up == "A":
         if button_states.get("A", 0) + DEBOUNCE_DELAY <= time.monotonic():
             button_states["A"] = time.monotonic()
-            mouse.release(Button.left)
+            mouse.release(Button.left)  # Simulate left mouse button release
     elif button_up == "Menu":
         if button_states.get("Menu", 0) + DEBOUNCE_DELAY <= time.monotonic():
             button_states["Menu"] = time.monotonic()
-            mouse.release(Button.right)
-    elif button_up == "B":  # Added "B" button action
-        if button_states.get("B", 0) + DEBOUNCE_DELAY <= time.monotonic():
-            button_states["B"] = time.monotonic()
-            keyboard.release(Key.esc)  # Simulate releasing the "Esc" key
-    else:
-        return
+            mouse.release(Button.right)  # Simulate right mouse button release
 
 
 # Detect Controller
@@ -146,35 +126,40 @@ def initialize_controller():
 def handle_joystick_motion(controller, mouse):
     joystick_x_axis = controller.get_axis(0)
     joystick_y_axis = controller.get_axis(1)
+    right_joystick_x_axis = controller.get_axis(2)
+    right_joystick_y_axis = controller.get_axis(3)
 
     # Apply deadzone handling
-    if abs(joystick_x_axis) < JOYSTICK_DEADZONE:
-        joystick_x_axis = 0.0
-    if abs(joystick_y_axis) < JOYSTICK_DEADZONE:
-        joystick_y_axis = 0.0
+    joystick_x_axis = joystick_x_axis if abs(joystick_x_axis) >= JOYSTICK_DEADZONE else 0.0
+    joystick_y_axis = joystick_y_axis if abs(joystick_y_axis) >= JOYSTICK_DEADZONE else 0.0
+    right_joystick_x_axis = right_joystick_x_axis if abs(right_joystick_x_axis) >= JOYSTICK_DEADZONE else 0.0
+    right_joystick_y_axis = right_joystick_y_axis if abs(right_joystick_y_axis) >= JOYSTICK_DEADZONE else 0.0
 
     # Apply smoothing using exponential moving average
-    smoothing_factor = 0.2  # Adjust this value for smoother or more responsive input
     joystick_x_axis = joystick_x_axis * (1 - smoothing_factor) + joystick_x_axis * smoothing_factor
     joystick_y_axis = joystick_y_axis * (1 - smoothing_factor) + joystick_y_axis * smoothing_factor
+    right_joystick_x_axis = right_joystick_x_axis * (1 - smoothing_factor) + right_joystick_x_axis * smoothing_factor
+    right_joystick_y_axis = right_joystick_y_axis * (1 - smoothing_factor) + right_joystick_y_axis * smoothing_factor
 
     joystick_x_axis *= JOYSTICK_SENSITIVITY
     joystick_y_axis *= JOYSTICK_SENSITIVITY
+    right_joystick_x_axis *= JOYSTICK_SENSITIVITY
+    right_joystick_y_axis *= JOYSTICK_SENSITIVITY
 
-    # Check if the joystick velocities are within a valid range
-    if not (-32768 <= joystick_x_axis <= 32767) or not (-32768 <= joystick_y_axis <= 32767):
-        return
+    joystick_x_axis *= left_joystick_speed
+    joystick_y_axis *= left_joystick_speed
+    right_joystick_x_axis *= right_joystick_speed
+    right_joystick_y_axis *= right_joystick_speed
 
-    mouse.move(int(joystick_x_axis), int(joystick_y_axis))
+    if (-32768 <= joystick_x_axis <= 32767) and (-32768 <= joystick_y_axis <= 32767):
+        mouse.move(int(joystick_x_axis), int(joystick_y_axis))
+        mouse.scroll(int(-right_joystick_x_axis), int(-right_joystick_y_axis))
+        pygame.time.wait(1)  # Add a small delay for smoother movement
 
 
 # Start receiving inputs
 def run_controller_input(controller, mouse, button_map):
     logger.info("Starting controller input loop")
-
-    # Initialize joystick velocities
-    joystick_x_velocity = 0.0
-    joystick_y_velocity = 0.0
 
     while not exit_flag.is_set():
         pygame.event.pump()
@@ -182,27 +167,18 @@ def run_controller_input(controller, mouse, button_map):
             if event.type == pygame.JOYBUTTONDOWN:
                 button_down = map_button_to_name(event.button, button_map)
                 handle_button_down(button_down, mouse)
-
             elif event.type == pygame.JOYBUTTONUP:
                 button_up = map_button_to_name(event.button, button_map)
                 handle_button_up(button_up, mouse)
 
         handle_joystick_motion(controller, mouse)
 
-        # Reset velocities when joystick is released
-        if joystick_x_velocity == 0.0 and joystick_y_velocity == 0.0:
-            joystick_x_velocity = 0.0
-            joystick_y_velocity = 0.0
-
         time.sleep(SLEEP_TIME)
 
 
 # Main
 def main():
-    # Set up mouse controller
     mouse = Controller()
-
-    # Load button map
     button_map = load_button_map(BUTTON_MAP_FILENAME)
 
     try:
