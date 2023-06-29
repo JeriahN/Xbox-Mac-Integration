@@ -8,7 +8,6 @@ import os.path  # Filesystem for creating and managing config file
 import threading  # Multithreading for better optimization
 import time  # Time for delays used in smoothing
 from collections import defaultdict  # Imports some dictionaries or something
-import psutil  # Import process
 
 # Global Variables
 smoothing_factor = 0.2  # Choose smoothness of scrolling and cursor movement
@@ -25,6 +24,7 @@ SLEEP_TIME = 0.01  # Time between each time code is run (can affect smoothness d
 
 # Files
 BUTTON_MAP_FILENAME = "button_map.json"  # Name of the button map
+KEYBOARD_MAP_FILENAME = "button_map.json"  # Name of the keyboard map
 LOG_FILENAME = "xbxmacintegration.log"  # Name of the main log, others LOG_FILENAME(1, 2, 3)
 
 keyboard = KeyboardController()
@@ -59,7 +59,27 @@ DEFAULT_BUTTON_MAP = {
     12: "Down_Arrow",
     13: "Left_Arrow",
     14: "Right_Arrow",
-    15: "Exit"
+    15: "Share"
+}
+
+# Default keyboard mapping
+DEFAULT_KEYBOARD_MAP = {
+    "A": "LEFT_CLICK",
+    "B": "esc",
+    "X": "x",
+    "Y": "y",
+    "Select": "Shift",
+    "Home": "f4",
+    "Menu": "RIGHT_CLICK",
+    "LS": "LS",
+    "RS": "RS",
+    "LB": "LB",
+    "RB": "RB",
+    "Up_Arrow": "up",
+    "Down_Arrow": "down",
+    "Left_Arrow": "left",
+    "Right_Arrow": "right",
+    "Share": "f3"
 }
 
 # Global dictionary to track button states and debounce timestamps
@@ -69,7 +89,7 @@ exit_flag = threading.Event()
 
 
 # Load button map or create a new one
-def load_button_map(filename):
+def load_map_file(filename, button_map):
     logger.info("Loading button map from file: %s", filename)
     if os.path.isfile(filename):
         with open(filename, "r") as f:
@@ -77,12 +97,12 @@ def load_button_map(filename):
     else:
         logger.warning("Button map file not found. Creating a new one with default values.")
         with open(filename, "w") as f:
-            json.dump(DEFAULT_BUTTON_MAP, f)
-        return DEFAULT_BUTTON_MAP
+            json.dump(button_map, f)
+        return button_map
 
 
 # Assign name to button when pressed
-def map_button_to_name(button, button_map):
+def map_button_to_name(button, button_map, keyboard_map):
     return button_map.get(str(button), button)
 
 
@@ -158,17 +178,17 @@ def handle_joystick_motion(controller, mouse):
 
 
 # Start receiving inputs
-def run_controller_input(controller, mouse, button_map):
+def run_controller_input(controller, mouse, button_map, keyboard_map):
     logger.info("Starting controller input loop")
 
     while not exit_flag.is_set():
         pygame.event.pump()
         for event in pygame.event.get():
             if event.type == pygame.JOYBUTTONDOWN:
-                button_down = map_button_to_name(event.button, button_map)
+                button_down = map_button_to_name(event.button, button_map, keyboard_map)
                 handle_button_down(button_down, mouse)
             elif event.type == pygame.JOYBUTTONUP:
-                button_up = map_button_to_name(event.button, button_map)
+                button_up = map_button_to_name(event.button, button_map, keyboard_map)
                 handle_button_up(button_up, mouse)
 
         handle_joystick_motion(controller, mouse)
@@ -179,11 +199,12 @@ def run_controller_input(controller, mouse, button_map):
 # Main
 def main():
     mouse = Controller()
-    button_map = load_button_map(BUTTON_MAP_FILENAME)
+    button_map = load_map_file(BUTTON_MAP_FILENAME, DEFAULT_BUTTON_MAP)
+    keyboard_map = load_map_file(KEYBOARD_MAP_FILENAME, DEFAULT_KEYBOARD_MAP)
 
     try:
         controller = initialize_controller()
-        run_controller_input(controller, mouse, button_map)
+        run_controller_input(controller, mouse, button_map, keyboard_map)
     except FileNotFoundError:
         logger.error("Button map file not found.")
     except pygame.error:
